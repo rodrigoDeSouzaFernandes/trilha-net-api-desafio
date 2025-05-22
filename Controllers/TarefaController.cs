@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using TrilhaApiDesafio.Context;
 using TrilhaApiDesafio.Models;
+using TrilhaApiDesafio.Services;
+using trilhaNetApiDesafio.Exceptions;
 
 namespace TrilhaApiDesafio.Controllers
 {
@@ -8,89 +9,158 @@ namespace TrilhaApiDesafio.Controllers
     [Route("[controller]")]
     public class TarefaController : ControllerBase
     {
-        private readonly OrganizadorContext _context;
+        private readonly TarefaService _tarefaService;
 
-        public TarefaController(OrganizadorContext context)
+        public TarefaController(TarefaService tarefaService)
         {
-            _context = context;
+            _tarefaService = tarefaService;
         }
 
         [HttpGet("{id}")]
         public IActionResult ObterPorId(int id)
         {
-            // TODO: Buscar o Id no banco utilizando o EF
-            // TODO: Validar o tipo de retorno. Se não encontrar a tarefa, retornar NotFound,
-            // caso contrário retornar OK com a tarefa encontrada
-            return Ok();
+            try
+            {
+                Tarefa tarefa = _tarefaService.ObterPorId(id);
+                return Ok(tarefa);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    new { Error = "Erro interno no servidor. Tente novamente mais tarde." }
+                );
+            }
         }
 
         [HttpGet("ObterTodos")]
         public IActionResult ObterTodos()
         {
-            // TODO: Buscar todas as tarefas no banco utilizando o EF
-            return Ok();
+            List<Tarefa> tarefas = _tarefaService.ObterTodos();
+            return Ok(tarefas);
         }
 
         [HttpGet("ObterPorTitulo")]
         public IActionResult ObterPorTitulo(string titulo)
         {
-            // TODO: Buscar  as tarefas no banco utilizando o EF, que contenha o titulo recebido por parâmetro
-            // Dica: Usar como exemplo o endpoint ObterPorData
-            return Ok();
+            try
+            {
+                List<Tarefa> tarefas = _tarefaService.ObterPorTitulo(titulo);
+                return Ok(tarefas);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { Error = "Erro interno" });
+            }
         }
 
         [HttpGet("ObterPorData")]
         public IActionResult ObterPorData(DateTime data)
         {
-            var tarefa = _context.Tarefas.Where(x => x.Data.Date == data.Date);
-            return Ok(tarefa);
+            try
+            {
+                var tarefa = _tarefaService.ObterPorData(data);
+                return Ok(tarefa);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { Error = "Erro interno" });
+            }
         }
 
         [HttpGet("ObterPorStatus")]
         public IActionResult ObterPorStatus(EnumStatusTarefa status)
         {
-            // TODO: Buscar  as tarefas no banco utilizando o EF, que contenha o status recebido por parâmetro
-            // Dica: Usar como exemplo o endpoint ObterPorData
-            var tarefa = _context.Tarefas.Where(x => x.Status == status);
-            return Ok(tarefa);
+            try
+            {
+                List<Tarefa> tarefas = _tarefaService.ObterPorStatus(status);
+                return Ok(tarefas);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { Error = "Erro interno" });
+            }
         }
 
         [HttpPost]
         public IActionResult Criar(Tarefa tarefa)
         {
-            if (tarefa.Data == DateTime.MinValue)
-                return BadRequest(new { Erro = "A data da tarefa não pode ser vazia" });
+            try
+            {
+                _tarefaService.Criar(tarefa);
 
-            // TODO: Adicionar a tarefa recebida no EF e salvar as mudanças (save changes)
-            return CreatedAtAction(nameof(ObterPorId), new { id = tarefa.Id }, tarefa);
+                return CreatedAtAction(nameof(ObterPorId), new { id = tarefa.Id }, tarefa);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    new { Error = "Erro interno no servidor. Tente novamente mais tarde." }
+                );
+            }
         }
 
         [HttpPut("{id}")]
         public IActionResult Atualizar(int id, Tarefa tarefa)
         {
-            var tarefaBanco = _context.Tarefas.Find(id);
+            try
+            {
+                _tarefaService.Atualizar(id, tarefa);
 
-            if (tarefaBanco == null)
-                return NotFound();
-
-            if (tarefa.Data == DateTime.MinValue)
-                return BadRequest(new { Erro = "A data da tarefa não pode ser vazia" });
-
-            // TODO: Atualizar as informações da variável tarefaBanco com a tarefa recebida via parâmetro
-            // TODO: Atualizar a variável tarefaBanco no EF e salvar as mudanças (save changes)
-            return Ok();
+                return Ok(new { Message = "Tarefa atualizada com sucesso!" });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    new { Error = "Erro interno no servidor. Tente novamente mais tarde." }
+                );
+            }
         }
 
         [HttpDelete("{id}")]
         public IActionResult Deletar(int id)
         {
-            var tarefaBanco = _context.Tarefas.Find(id);
-
-            if (tarefaBanco == null)
-                return NotFound();
-
-            // TODO: Remover a tarefa encontrada através do EF e salvar as mudanças (save changes)
-            return NoContent();
+            try
+            {
+                _tarefaService.Deletar(id);
+                return NoContent();
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    500,
+                    new { Error = "Erro interno no servidor. Tente novamente mais tarde." }
+                );
+            }
         }
     }
 }
